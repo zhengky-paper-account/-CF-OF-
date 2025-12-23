@@ -90,7 +90,7 @@ flowchart TD
     检查位置 -->|不在末尾| 检查后继符号{后继符号类型}
     检查位置 -->|在末尾| 合并FOLLOW[将左部FOLLOW集<br/>合并到该非终结符FOLLOW集<br/>changed = true]
     检查后继符号 -->|终结符| 加入FOLLOW[将终结符加入<br/>该非终结符FOLLOW集<br/>changed = true]
-    检查后继符号 -->|非终结符| 合并FIRST[将后继非终结符FIRST集<br/>合并到该非终结符FOLLOW集<br/>changed = true]
+    检查后继符号 -->|非终结符| 合并FIRST[将后继非终结符FIRST集<br/>合并到该非终结符FOLLOW集<br/>changed = true<br/>注意:当前文法无空串产生式<br/>FIRST集不包含空串<br/>只需处理直接后继符号<br/>无需检查空串或连续非终结符]
     加入FOLLOW --> 检查下一个符号{还有符号?}
     合并FIRST --> 检查下一个符号
     合并FOLLOW --> 检查下一个符号
