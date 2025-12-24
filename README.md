@@ -14,7 +14,6 @@ OF的计算方法：
 <img width="440" height="236" alt="图片" src="https://github.com/user-attachments/assets/3c9e8351-a4b5-4a7d-b85e-c4cbeecf7667" />
 <img width="1702" height="791" alt="图片" src="https://github.com/user-attachments/assets/e2928036-4d87-49f1-a149-93ea1b0e0dc9" />
 
-
 # 3.3 语义分析方法流程图
 
 ## 3.3.2 语义动作执行流程图
@@ -23,7 +22,7 @@ OF的计算方法：
 flowchart TD
     开始([开始执行语义动作]) --> 获取产生式[获取产生式信息]
     获取产生式 --> 检查语义动作{产生式有语义动作?}
-    检查语义动作 -->|否| 直接传递[直接传递第一个子节点属性值<br/>newVal = rhsVals[0]]
+    检查语义动作 -->|否| 直接传递[直接传递第一个子节点属性值<br/>newVal = rhsVals第0个元素]
     检查语义动作 -->|是| 调用语义函数[调用语义动作函数<br/>newVal = semanticAction(rhsVals)]
     调用语义函数 --> 提取属性值[从rhsVals中提取子节点属性值]
     提取属性值 --> 计算属性值[计算父节点的属性值]
@@ -76,8 +75,8 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    开始([归约Assign产生式]) --> 提取标识符[提取id的属性值<br/>id_place = rhs[0].name]
-    提取标识符 --> 提取表达式[提取E的属性值<br/>E_place = rhs[2].name]
+    开始([归约Assign产生式]) --> 提取标识符[提取id的属性值<br/>id_place = rhs第0个元素.name]
+    提取标识符 --> 提取表达式[提取E的属性值<br/>E_place = rhs第2个元素.name]
     提取表达式 --> 生成赋值四元式[生成赋值四元式<br/>GEN=, E_place, , id_place]
     生成赋值四元式 --> 记录开始位置[记录表达式开始位置<br/>result.beginLabel = E.beginLabel]
     记录开始位置 --> 返回结果[返回语义值<br/>result.name = id_place]
@@ -88,8 +87,8 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    开始([归约算术表达式产生式]) --> 提取左操作数[提取左操作数属性值<br/>E1_place = rhs[0].name]
-    提取左操作数 --> 提取右操作数[提取右操作数属性值<br/>T_place = rhs[2].name]
+    开始([归约算术表达式产生式]) --> 提取左操作数[提取左操作数属性值<br/>E1_place = rhs第0个元素.name]
+    提取左操作数 --> 提取右操作数[提取右操作数属性值<br/>T_place = rhs第2个元素.name]
     提取右操作数 --> 生成临时变量[生成临时变量<br/>E_place = Newtemp]
     生成临时变量 --> 生成算术四元式[生成算术运算四元式<br/>GEN+, E1_place, T_place, E_place]
     生成算术四元式 --> 记录开始位置[记录表达式开始位置<br/>result.beginLabel = E1.beginLabel]
@@ -101,9 +100,9 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    开始([归约比较表达式产生式]) --> 提取左操作数[提取左操作数<br/>result.left = rhs[0].name]
-    提取左操作数 --> 提取运算符[提取运算符<br/>result.op = rhs[1].name]
-    提取运算符 --> 提取右操作数[提取右操作数<br/>result.right = rhs[2].name]
+    开始([归约比较表达式产生式]) --> 提取左操作数[提取左操作数<br/>result.left = rhs第0个元素.name]
+    提取左操作数 --> 提取运算符[提取运算符<br/>result.op = rhs第1个元素.name]
+    提取运算符 --> 提取右操作数[提取右操作数<br/>result.right = rhs第2个元素.name]
     提取右操作数 --> 设置空名称[设置name为空<br/>result.name = ""]
     设置空名称 --> 返回结果[返回语义值]
     返回结果 --> 结束([比较表达式语义动作完成])
@@ -113,8 +112,8 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    开始([归约DoWhile产生式]) --> 获取循环起始[获取循环体起始行号<br/>stmtBeginQuad = rhs[1].beginLabel]
-    获取循环起始 --> 提取条件表达式[提取条件表达式E<br/>E_val = rhs[4]]
+    开始([归约DoWhile产生式]) --> 获取循环起始[获取循环体起始行号<br/>stmtBeginQuad = rhs第1个元素.beginLabel]
+    获取循环起始 --> 提取条件表达式[提取条件表达式E<br/>E_val = rhs第4个元素]
     提取条件表达式 --> 判断表达式类型{E是比较表达式?}
     判断表达式类型 -->|是| 生成条件跳转[生成条件跳转四元式<br/>GENj + E.op, E.left, E.right, stmtBeginQuad]
     判断表达式类型 -->|否| 计算退出位置[计算退出位置<br/>exitQuad = quads.size + 2]
