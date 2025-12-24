@@ -23,7 +23,7 @@ flowchart TD
     开始([开始执行语义动作]) --> 获取产生式[获取产生式信息]
     获取产生式 --> 检查语义动作{产生式有语义动作?}
     检查语义动作 -->|否| 直接传递[直接传递第一个子节点属性值<br/>newVal = rhsVals第0个元素]
-    检查语义动作 -->|是| 调用语义函数[调用语义动作函数<br/>newVal = semanticAction(rhsVals)]
+    检查语义动作 -->|是| 调用语义函数[调用语义动作函数<br/>newVal = semanticAction调用rhsVals]
     调用语义函数 --> 提取属性值[从rhsVals中提取子节点属性值]
     提取属性值 --> 计算属性值[计算父节点的属性值]
     计算属性值 --> 生成中间代码[生成中间代码四元式]
@@ -66,7 +66,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     开始([需要生成临时变量]) --> 增加计数器[tempCount++]
-    增加计数器 --> 生成变量名[生成变量名<br/>name = "t" + to_string(tempCount)]
+    增加计数器 --> 生成变量名[生成变量名<br/>name = t + tempCount的字符串]
     生成变量名 --> 返回变量名[返回临时变量名]
     返回变量名 --> 结束([临时变量生成完成])
 ```
@@ -115,10 +115,10 @@ flowchart TD
     开始([归约DoWhile产生式]) --> 获取循环起始[获取循环体起始行号<br/>stmtBeginQuad = rhs第1个元素.beginLabel]
     获取循环起始 --> 提取条件表达式[提取条件表达式E<br/>E_val = rhs第4个元素]
     提取条件表达式 --> 判断表达式类型{E是比较表达式?}
-    判断表达式类型 -->|是| 生成条件跳转[生成条件跳转四元式<br/>GENj + E.op, E.left, E.right, stmtBeginQuad]
+    判断表达式类型 -->|是| 生成条件跳转[生成条件跳转四元式<br/>GEN j加E.op, E.left, E.right, stmtBeginQuad]
     判断表达式类型 -->|否| 计算退出位置[计算退出位置<br/>exitQuad = quads.size + 2]
-    计算退出位置 --> 生成零跳转[生成零跳转四元式<br/>GENjz, E.name, , exitQuad]
-    生成零跳转 --> 生成无条件跳转[生成无条件跳转四元式<br/>GENj, , , stmtBeginQuad]
+    计算退出位置 --> 生成零跳转[生成零跳转四元式<br/>GEN jz, E.name, 空, exitQuad]
+    生成零跳转 --> 生成无条件跳转[生成无条件跳转四元式<br/>GEN j, 空, 空, stmtBeginQuad]
     生成条件跳转 --> 记录开始位置[记录循环开始位置<br/>result.beginLabel = stmtBeginQuad]
     生成无条件跳转 --> 记录开始位置
     记录开始位置 --> 返回结果[返回语义值]
