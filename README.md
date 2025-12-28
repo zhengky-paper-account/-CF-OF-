@@ -15,8 +15,9 @@ OF的计算方法：
 <img width="1702" height="791" alt="图片" src="https://github.com/user-attachments/assets/e2928036-4d87-49f1-a149-93ea1b0e0dc9" />
 
 ```mermaid
-graph TD
-    A[请求页式管理缺页中断模拟程序] --> B[输入模块]
+flowchart TD
+    A[请求页式管理缺页中断模拟程序]
+    A --> B[输入模块]
     A --> C[算法选择模块]
     A --> D[页面置换算法模块]
     A --> E[状态记录模块]
@@ -50,4 +51,3 @@ graph TD
     F --> F2[内存状态表输出]
     F --> F3[淘汰页号输出]
 ```
-
