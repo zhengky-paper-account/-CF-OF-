@@ -50,4 +50,10 @@ flowchart TB
     F --> F1[基本信息输出]
     F --> F2[内存状态表输出]
     F --> F3[淘汰页号输出]
+    classDef topLevel fill:#e1f5ff
+    classDef secondLevel fill:#f0f8ff
+    classDef thirdLevel fill:#fafafa
+    class A topLevel
+    class B,C,D,E,F secondLevel
+    class B1,B2,C1,C2,C3,D1,D2,D3,D4,E1,E2,E3,F1,F2,F3 thirdLevel
 ```
