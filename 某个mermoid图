@@ -1,119 +1,350 @@
+# 心理学GNN模块 - Mermaid流程图
+
+## 完整流程图
 
 ```mermaid
-graph TD
-    A[磁盘调度算法模拟程序] --> B[初始化模块]
-    A --> C[参数配置模块]
-    A --> D[输入处理模块]
-    A --> E[算法执行模块]
-    A --> F[结果显示模块]
-    A --> G[程序控制模块]
+flowchart TD
+    Start([输入: au_descriptions_list<br/>acoustic_features_list<br/>valence_labels]) --> M1[模块1: 子图构建]
     
-    B --> B1[创建DiskScheduler对象]
-    B --> B2[设置默认参数<br/>磁头=0,方向=向外,最大磁道=199]
-    B --> B3[显示欢迎信息]
+    M1 --> |提取节点索引| M1A[获取present_nodes]
+    M1A --> |提取特征| M1B[node_features: [subgraph_nodes, 8, 4096]<br/>edge_features: [subgraph_nodes, subgraph_nodes, 64]]
     
-    C --> C1[设置磁头位置<br/>setCurrentHead]
-    C --> C2[设置移动方向<br/>setDirection]
-    C --> C3[设置最大磁道号<br/>setMaxTrack]
+    M1B --> M2[模块2: Padding与批处理]
+    M2 --> |找到max_nodes| M2A[Padding到max_nodes]
+    M2A --> |创建mask| M2B[batch_node_features: [batch_size, max_nodes, 8, 4096]<br/>batch_edge_features: [batch_size, max_nodes, max_nodes, 64]<br/>batch_node_masks: [batch_size, max_nodes]]
     
-    C1 --> C1A[输入验证范围检查]
-    C1 --> C1B[更新currentHead]
-    C1 --> C1C[显示设置成功信息]
+    M2B --> M3[模块3: 节点特征投影]
+    M3 --> |Linear投影| M3A[projected: [batch_size, max_nodes, 8, 128]]
     
-    C2 --> C2A[输入验证1或-1]
-    C2 --> C2B[更新direction]
-    C2 --> C2C[显示方向说明]
+    M3A --> M4[模块4: 构建邻接矩阵]
+    M4 --> |提取边强度| M4A[edge_strength: [batch_size, max_nodes, max_nodes]]
+    M4A --> |计算掩码| M4B[adjacency_mask: [batch_size, max_nodes, max_nodes]]
+    M4B --> |添加自环| M4C[adjacency_mask with self-loops]
     
-    C3 --> C3A[输入验证>0]
-    C3 --> C3B[更新maxTrack]
-    C3 --> C3C[显示设置成功信息]
+    M4C --> M5[模块5: Hop-Diffused Attention]
+    M5 --> |转置| M5A[projected: [batch_size, 8, max_nodes, 128]]
+    M5A --> |计算注意力| M5B[A_base: [batch_size, max_nodes, max_nodes]]
+    M5B --> |应用掩码| M5C[归一化A_base]
+    M5C --> |多跳扩散| M5D[A_diffused = Σ θ_k * A^k<br/>θ_k = α * (1-α)^k]
+    M5D --> |更新特征| M5E[structural_features: [batch_size, max_nodes, 8, 128]]
     
-    D --> D1[选择输入模式]
-    D --> D2[输入验证子模块]
+    M5E --> M6[模块6: 边特征门控]
+    M6 --> |边特征投影| M6A[edge_proj: [batch_size, max_nodes, max_nodes, 128]]
+    M6A --> |门控计算| M6B[gate_weights: [batch_size, max_nodes, max_nodes, 128]]
+    M6B --> |应用门控| M6C[gated_edge_feat]
+    M6C --> |聚合邻居| M6D[neighbor_agg: [batch_size, max_nodes, 128]]
+    M6D --> |融合特征| M6E[updated_features: [batch_size, max_nodes, 8, 128]]
     
-    D1 --> D1A[模式1:逐个输入]
-    D1 --> D1B[模式2:一次性输入]
+    M6E --> M7[模块7: 残差连接与归一化]
+    M7 --> |残差连接| M7A[projected + updated_features]
+    M7A --> |LayerNorm| M7B[归一化特征]
+    M7B --> |Dropout| M7C[batch_updated_features: [batch_size, max_nodes, 8, 128]]
     
-    D1A --> D1A1[输入请求数量]
-    D1A --> D1A2[循环输入每个磁道号]
-    D1A --> D1A3[实时验证和反馈]
-    D1A --> D1A4[添加到请求序列]
+    M7C --> M8[模块8: 子图特征聚合]
+    M8 --> |对每个样本| M8A[updated_features: [max_nodes, 8, 128]]
+    M8A --> |注意力聚合| M8B[attn_agg: [128]]
+    M8A --> |门控聚合| M8C[gate_agg: [128]]
+    M8B --> |融合| M8D[combined: [256]]
+    M8C --> |融合| M8D
+    M8D --> |图规模编码| M8E[fused: [128]]
+    M8E --> |堆叠| M8F[acoustic_features: [batch_size, 8, 128]<br/>visual_features: [batch_size, 8, 128]<br/>full_features: [batch_size, 8, 128]]
     
-    D1B --> D1B1[读取整行输入]
-    D1B --> D1B2[解析空格分隔的磁道号]
-    D1B --> D1B3[验证每个磁道号]
-    D1B --> D1B4[处理无效输入询问重新输入]
-    D1B --> D1B5[保持原始输入顺序]
-    D1B --> D1B6[显示输入统计信息]
+    M8F --> M9{是否计算<br/>Russell损失?}
+    M9 -->|是| M10[模块9: Valence预测]
+    M9 -->|否| End1([输出: 三种子图特征])
     
-    D2 --> D2A[类型验证整数转换]
-    D2 --> D2B[格式验证无多余字符]
-    D2 --> D2C[范围验证0到maxTrack]
+    M10 --> |注意力分数| M10A[valence_attn_weights: [batch_size, 8, 1]]
+    M10A --> |Softmax| M10B[归一化权重: [batch_size, 8]]
+    M10B --> |加权聚合| M10C[weighted_valence: [batch_size, 128]]
+    M10C --> |特征聚合| M10D[aggregated_valence: [batch_size, 128]]
+    M10D --> |预测| M10E[valence_pred: [batch_size], [-3, 3]]
     
-    E --> E1[FCFS算法]
-    E --> E2[SSTF算法]
-    E --> E3[SCAN算法]
-    E --> E4[批量比较功能compareAll]
+    M10E --> M11[模块10: Orthogonal Dimension预测]
+    M11 --> |注意力分数| M11A[orth_attn_weights: [batch_size, 8, 1]]
+    M11A --> |Softmax| M11B[归一化权重: [batch_size, 8]]
+    M11B --> |加权聚合| M11C[weighted_orth: [batch_size, 128]]
+    M11C --> |特征聚合| M11D[aggregated_orth: [batch_size, 128]]
+    M11D --> |预测| M11E[orth_pred: [batch_size], [0, 1]]
     
-    E1 --> E1A[检查请求序列非空]
-    E1 --> E1B[按顺序访问每个请求]
-    E1 --> E1C[计算每步移动距离]
-    E1 --> E1D[累计总移动距离]
-    E1 --> E1E[调用displayResult显示结果]
+    M11E --> M12[模块11: 正交正则化]
+    M12 --> |特征提取| M12A[valence_features: [batch_size, 32]<br/>orth_features: [batch_size, 32]]
+    M12A --> |余弦相似度| M12B[cos_sim: [batch_size]]
+    M12B --> |正交损失| M12C[orthogonality: scalar]
     
-    E2 --> E2A[检查请求序列非空]
-    E2 --> E2B[初始化访问标记数组visited]
-    E2 --> E2C[循环查找最近未访问请求]
-    E2 --> E2D[更新访问标记和当前位置]
-    E2 --> E2E[累计总移动距离]
-    E2 --> E2F[调用displayResult显示结果]
+    M12C --> M13[模块12: 总损失计算]
+    M13 --> |MSE损失| M13A[valence_supervised: scalar]
+    M13A --> |总损失| M13B[total = valence_supervised + 0.1 * orthogonality]
     
-    E3 --> E3A[检查请求序列非空]
-    E3 --> E3B[排序请求序列sort]
-    E3 --> E3C[分离左右两侧请求]
-    E3 --> E3D[根据方向决定访问顺序]
-    E3 --> E3E[累计总移动距离]
-    E3 --> E3F[调用displayResult显示结果]
+    M13B --> End2([输出: 三种子图特征<br/>+ Russell损失结果])
     
-    E3D --> E3D1[方向=1:先右后左<br/>使用反向迭代器rbegin]
-    E3D --> E3D2[方向=-1:先左后右<br/>使用反向迭代器rbegin]
+    style Start fill:#e1f5ff
+    style End1 fill:#c8e6c9
+    style End2 fill:#c8e6c9
+    style M5 fill:#fff9c4
+    style M6 fill:#fff9c4
+    style M10 fill:#ffccbc
+    style M11 fill:#ffccbc
+    style M12 fill:#ffccbc
+    style M13 fill:#ffccbc
+```
+
+---
+
+## GCN层详细流程图
+
+```mermaid
+flowchart LR
+    A[节点特征投影<br/>[batch, max_nodes, 8, 4096]] --> B[projected<br/>[batch, max_nodes, 8, 128]]
     
-    E4 --> E4A[依次调用FCFS]
-    E4 --> E4B[依次调用SSTF]
-    E4 --> E4C[依次调用SCAN]
-    E4 --> E4D[显示对比结果]
+    C[边特征<br/>[batch, max_nodes, max_nodes, 64]] --> D[构建邻接矩阵<br/>adjacency_mask<br/>[batch, max_nodes, max_nodes]]
     
-    F --> F1[显示系统设置displaySettings]
-    F --> F2[显示算法结果displayResult]
+    B --> E[Hop-Diffused Attention]
+    D --> E
+    E --> F[structural_features<br/>[batch, max_nodes, 8, 128]]
     
-    F1 --> F1A[当前磁头位置]
-    F1 --> F1B[磁头移动方向]
-    F1 --> F1C[最大磁道号]
-    F1 --> F1D[请求序列格式化显示每行8个]
+    F --> G[边特征门控]
+    C --> G
+    G --> H[updated_features<br/>[batch, max_nodes, 8, 128]]
     
-    F2 --> F2A[算法名称和基本信息]
-    F2 --> F2B[访问顺序箭头连接自动换行]
-    F2 --> F2C[统计信息]
-    F2 --> F2D[详细移动过程表]
+    B --> I[残差连接]
+    H --> I
+    I --> J[LayerNorm + Dropout]
+    J --> K[batch_updated_features<br/>[batch, max_nodes, 8, 128]]
     
-    F2C --> F2C1[磁头移动总磁道数]
-    F2C --> F2C2[平均寻道长度]
+    style E fill:#fff9c4
+    style G fill:#fff9c4
+    style I fill:#e1f5ff
+```
+
+---
+
+## Hop-Diffused Attention详细流程
+
+```mermaid
+flowchart TD
+    A[projected<br/>[batch, max_nodes, 8, 128]] --> B[转置<br/>[batch, 8, max_nodes, 128]]
     
-    F2D --> F2D1[步骤编号]
-    F2D --> F2D2[起始磁道]
-    F2D --> F2D3[目标磁道]
-    F2D --> F2D4[移动距离]
+    B --> C{对每个token位置}
+    C --> D[token_features<br/>[batch, max_nodes, 128]]
     
-    G --> G1[主循环while true]
-    G --> G2[菜单显示displayMenu]
-    G --> G3[用户选择处理switch-case]
-    G --> G4[退出处理case 0]
+    D --> E[计算自注意力]
+    E --> F[A_base<br/>[batch, max_nodes, max_nodes]]
     
-    style A fill:#e1f5ff,stroke:#01579b,stroke-width:3px
-    style B fill:#fff4e1,stroke:#e65100
-    style C fill:#e8f5e9,stroke:#2e7d32
-    style D fill:#e8f5e9,stroke:#2e7d32
-    style E fill:#e8f5e9,stroke:#2e7d32
-    style F fill:#e8f5e9,stroke:#2e7d32
-    style G fill:#fce4ec,stroke:#880e4f
-```					
+    G[adjacency_mask<br/>[batch, max_nodes, max_nodes]] --> H[应用掩码]
+    F --> H
+    H --> I[归一化A_base]
+    
+    I --> J[多跳扩散]
+    J --> K[A_power = eye<br/>初始单位矩阵]
+    K --> L[for k in range(max_hop+1)]
+    L --> M[A_diffused += θ_k * A_power<br/>θ_k = α * (1-α)^k]
+    M --> N[A_power = bmm(A_power, A_base)]
+    N --> L
+    L --> O[A_diffused<br/>[batch, max_nodes, max_nodes]]
+    
+    D --> P[应用扩散矩阵]
+    O --> P
+    P --> Q[diffused_features<br/>[batch, max_nodes, 128]]
+    
+    Q --> R[堆叠所有token]
+    R --> S[structural_features<br/>[batch, max_nodes, 8, 128]]
+    
+    style J fill:#fff9c4
+    style M fill:#ffccbc
+```
+
+---
+
+## 子图特征聚合详细流程
+
+```mermaid
+flowchart TD
+    A[batch_updated_features<br/>[batch, max_nodes, 8, 128]] --> B[对每个样本]
+    B --> C[updated_features<br/>[max_nodes, 8, 128]]
+    
+    C --> D[对每个token位置]
+    D --> E[token_features<br/>[max_nodes, 128]]
+    
+    E --> F[应用mask]
+    F --> G[masked_features<br/>[num_real_nodes, 128]]
+    
+    G --> H[注意力聚合]
+    G --> I[门控聚合]
+    
+    H --> J[attn_scores = attn_out(tanh(attn_hidden))]
+    J --> K[attn_weights = softmax(attn_scores)]
+    K --> L[attn_agg = sum(masked_features * attn_weights)]
+    
+    I --> M[gate_scores = sigmoid(gate_out(tanh(gate_hidden)))]
+    M --> N[gate_agg = mean(masked_features * gate_scores)]
+    
+    L --> O[融合]
+    N --> O
+    O --> P[combined = cat([attn_agg, gate_agg])<br/>[256]]
+    
+    P --> Q[图规模编码]
+    Q --> R[size_weight = sigmoid(mlp(num_real_nodes / total_nodes))]
+    
+    P --> S[readout_projector]
+    S --> T[fused = readout_projector(combined)<br/>[128]]
+    
+    T --> U[fused = fused * size_weight]
+    R --> U
+    U --> V[fused: [128]]
+    
+    V --> W[堆叠所有token]
+    W --> X[subgraph_feature<br/>[8, 128]]
+    
+    X --> Y[堆叠所有样本]
+    Y --> Z[acoustic_features: [batch, 8, 128]<br/>visual_features: [batch, 8, 128]<br/>full_features: [batch, 8, 128]]
+    
+    style H fill:#fff9c4
+    style I fill:#fff9c4
+    style Q fill:#e1f5ff
+```
+
+---
+
+## Russell损失计算详细流程
+
+```mermaid
+flowchart TD
+    A[subgraph_features<br/>[batch, 8, 128]] --> B[Valence预测路径]
+    C[acoustic_subgraph_features<br/>[batch, 8, 128]] --> D[Orthogonal Dimension预测路径]
+    
+    B --> E[valence_attention]
+    E --> F[valence_attn_weights: [batch, 8, 1]]
+    F --> G[softmax归一化]
+    G --> H[weighted_valence: [batch, 128]]
+    H --> I[valence_aggregation]
+    I --> J[aggregated_valence: [batch, 128]]
+    J --> K[valence_predictor]
+    K --> L[valence_pred: [batch], [-3, 3]]
+    
+    D --> M[orth_attention]
+    M --> N[orth_attn_weights: [batch, 8, 1]]
+    N --> O[softmax归一化]
+    O --> P[weighted_orth: [batch, 128]]
+    P --> Q[orth_aggregation]
+    Q --> R[aggregated_orth: [batch, 128]]
+    R --> S[orth_predictor]
+    S --> T[orth_pred: [batch], [0, 1]]
+    
+    J --> U[特征提取]
+    R --> U
+    U --> V[valence_features: [batch, 32]<br/>orth_features: [batch, 32]]
+    
+    V --> W[余弦相似度]
+    W --> X[cos_sim: [batch]]
+    X --> Y[orthogonality = mean(cos_sim²)]
+    
+    L --> Z[valence_supervised = MSE(valence_pred, labels)]
+    Y --> AA[总损失计算]
+    Z --> AA
+    AA --> AB[total = valence_supervised + 0.1 * orthogonality]
+    
+    style B fill:#ffccbc
+    style D fill:#ffccbc
+    style W fill:#fff9c4
+    style AA fill:#c8e6c9
+```
+
+---
+
+## 数据流概览图
+
+```mermaid
+graph TB
+    subgraph Input["输入层"]
+        I1[au_descriptions_list]
+        I2[acoustic_features_list]
+        I3[valence_labels]
+    end
+    
+    subgraph Preprocessing["预处理层"]
+        P1[子图构建]
+        P2[Padding]
+        P3[批处理]
+    end
+    
+    subgraph GCN["GCN层"]
+        G1[特征投影]
+        G2[邻接矩阵]
+        G3[Hop-Diffused Attention]
+        G4[边特征门控]
+        G5[残差连接]
+    end
+    
+    subgraph Aggregation["聚合层"]
+        A1[注意力聚合]
+        A2[门控聚合]
+        A3[图规模编码]
+    end
+    
+    subgraph Russell["Russell损失层"]
+        R1[Valence预测]
+        R2[Orthogonal预测]
+        R3[正交正则化]
+        R4[损失计算]
+    end
+    
+    subgraph Output["输出层"]
+        O1[acoustic_features]
+        O2[visual_features]
+        O3[full_features]
+        O4[russell_results]
+    end
+    
+    I1 --> P1
+    I2 --> P1
+    I3 --> Russell
+    
+    P1 --> P2
+    P2 --> P3
+    
+    P3 --> G1
+    G1 --> G2
+    G2 --> G3
+    G3 --> G4
+    G4 --> G5
+    
+    G5 --> A1
+    G5 --> A2
+    A1 --> A3
+    A2 --> A3
+    
+    A3 --> O1
+    A3 --> O2
+    A3 --> O3
+    A3 --> R1
+    
+    R1 --> R2
+    R2 --> R3
+    R3 --> R4
+    R4 --> O4
+    
+    style GCN fill:#fff9c4
+    style Russell fill:#ffccbc
+    style Aggregation fill:#e1f5ff
+```
+
+---
+
+## 使用说明
+
+这些Mermaid流程图可以在以下环境中查看和编辑：
+
+1. **GitHub/GitLab**: 直接在Markdown文件中渲染
+2. **VS Code**: 安装 "Markdown Preview Mermaid Support" 扩展
+3. **在线编辑器**: https://mermaid.live/
+4. **Notion/Obsidian**: 支持Mermaid语法
+
+### 流程图说明
+
+- **完整流程图**: 展示从输入到输出的完整流程
+- **GCN层详细流程**: GCN层的内部处理步骤
+- **Hop-Diffused Attention详细流程**: 多跳扩散的具体实现
+- **子图特征聚合详细流程**: 如何将节点特征聚合为子图特征
+- **Russell损失计算详细流程**: Russell损失的计算过程
+- **数据流概览图**: 整体架构的层次结构
+
